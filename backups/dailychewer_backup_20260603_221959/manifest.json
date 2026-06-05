@@ -1,0 +1,9 @@
+{
+  "created_at": "2026-06-03T22:19:59",
+  "files_backed_up": true,
+  "database_dumped": false,
+  "include_logs": false,
+  "skip_db": true,
+  "skip_files": false,
+  "data_dir": "/Users/user/Hare/dailychewer/data"
+}

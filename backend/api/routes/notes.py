@@ -1,0 +1,104 @@
+"""Daily note routes."""
+
+from __future__ import annotations
+
+from fastapi import APIRouter, Depends, HTTPException
+
+from backend.api.schemas import DailyNoteCreateRequest, DailyNoteUpdateRequest
+from dailychewer_backend.auth.dependencies import get_current_user
+from dailychewer_backend.models import UserContext
+from dailychewer_backend.services.note_service import DailyNoteService
+
+
+router = APIRouter(prefix="/api/notes", tags=["notes"])
+
+
+def _service(current_user) -> DailyNoteService:
+    return DailyNoteService(
+        user_context=UserContext(
+            user_id=current_user.id,
+            username=current_user.username,
+            storage_mode="database",
+        )
+    )
+
+
+@router.get("")
+def list_notes(month: str, current_user=Depends(get_current_user)) -> dict:
+    """List notes and calendar summaries for one month."""
+
+    try:
+        return _service(current_user).list_month(month)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("")
+def create_note(payload: DailyNoteCreateRequest, current_user=Depends(get_current_user)) -> dict:
+    """Create one note for the current or provided period."""
+
+    try:
+        record = _service(current_user).create_note(
+            content=payload.content,
+            note_date=payload.date,
+            period=payload.period,
+        )
+        return DailyNoteService.serialize_note(record)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/{note_date}")
+def list_notes_for_date(note_date: str, current_user=Depends(get_current_user)) -> dict:
+    """List all notes for one date."""
+
+    try:
+        return _service(current_user).list_date(note_date)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.patch("/{note_id}")
+def update_note(note_id: str, payload: DailyNoteUpdateRequest, current_user=Depends(get_current_user)) -> dict:
+    """Update one note."""
+
+    try:
+        record = _service(current_user).update_note(
+            note_id=note_id,
+            content=payload.content,
+            period=payload.period,
+        )
+        return DailyNoteService.serialize_note(record)
+    except ValueError as exc:
+        raise HTTPException(status_code=404 if str(exc) == "便条不存在。" else 400, detail=str(exc)) from exc
+
+
+@router.delete("/{note_id}")
+def delete_note(note_id: str, current_user=Depends(get_current_user)) -> dict:
+    """Delete one note."""
+
+    try:
+        _service(current_user).delete_note(note_id)
+        return {"deleted": True}
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.post("/{note_date}/generate-daily")
+def generate_daily_from_notes(note_date: str, current_user=Depends(get_current_user)) -> dict:
+    """Generate and save an optimized daily report from notes for one date."""
+
+    try:
+        return _service(current_user).generate_daily(note_date)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/{note_date}/generate-weekly")
+def generate_weekly_from_notes(note_date: str, current_user=Depends(get_current_user)) -> dict:
+    """Generate and save a weekly report for the date's week."""
+
+    try:
+        return _service(current_user).generate_weekly(note_date)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc

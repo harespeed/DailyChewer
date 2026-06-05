@@ -1,0 +1,525 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap");
+
+:root {
+  color: #17322d;
+  --wallpaper-image: none;
+  background:
+    radial-gradient(circle at top left, rgba(15, 118, 110, 0.18), transparent 24%),
+    radial-gradient(circle at right 20%, rgba(202, 138, 4, 0.16), transparent 18%),
+    linear-gradient(180deg, #f8fbf8 0%, #f2f5ef 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: transparent;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background:
+    linear-gradient(135deg, rgba(14, 35, 31, 0.2), rgba(248, 251, 248, 0.22)),
+    var(--wallpaper-image),
+    radial-gradient(circle at top left, rgba(15, 118, 110, 0.18), transparent 24%),
+    radial-gradient(circle at right 20%, rgba(202, 138, 4, 0.16), transparent 18%),
+    linear-gradient(180deg, #f8fbf8 0%, #f2f5ef 100%);
+  background-position: center;
+  background-size: cover;
+  opacity: 0;
+  transform: scale(1.015);
+  transition: opacity 900ms ease;
+  will-change: opacity;
+}
+
+:root[data-wallpaper="ready"] body::before {
+  opacity: 1;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 10%, rgba(255, 255, 255, 0.72), transparent 26%),
+    linear-gradient(180deg, rgba(248, 251, 248, 0.72), rgba(242, 245, 239, 0.82));
+  backdrop-filter: blur(1.5px);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app-shell {
+  min-height: 100vh;
+  background: transparent;
+  padding: 32px 20px 48px;
+}
+
+.center-shell,
+.login-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.login-card {
+  width: min(460px, 100%);
+}
+
+.hero-top {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.hero-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.hero {
+  max-width: 1080px;
+  margin: 0 auto 24px;
+  padding: 28px 32px;
+  border: 1px solid rgba(15, 118, 110, 0.15);
+  border-radius: 28px;
+  backdrop-filter: blur(20px);
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 18px 60px rgba(15, 23, 42, 0.08);
+}
+
+.eyebrow {
+  display: inline-block;
+  margin-bottom: 8px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 12px;
+  color: #0f766e;
+}
+
+.app-tabs {
+  max-width: 1080px;
+  margin: 0 auto;
+}
+
+.glass-card {
+  border-radius: 20px !important;
+  border: 1px solid rgba(15, 118, 110, 0.12) !important;
+  background: rgba(255, 255, 255, 0.84) !important;
+  box-shadow: 0 16px 44px rgba(15, 23, 42, 0.08);
+}
+
+.stack {
+  display: grid;
+  gap: 16px;
+}
+
+.preview-block {
+  margin-top: 20px;
+  padding: 18px;
+  border-radius: 18px;
+  background: #f6fbf8;
+  border: 1px solid #dcefe8;
+}
+
+.preview-block pre {
+  white-space: pre-wrap;
+  margin: 0;
+  font-family: "IBM Plex Sans", sans-serif;
+}
+
+.mt-12 {
+  margin-top: 12px;
+}
+
+.mt-16 {
+  margin-top: 16px;
+}
+
+.question-tracks {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.question-track {
+  min-height: 170px;
+  overflow: hidden;
+}
+
+.question-card {
+  padding: 14px;
+  border: 1px solid rgba(15, 118, 110, 0.12);
+  border-radius: 14px;
+  background: rgba(248, 252, 250, 0.9);
+}
+
+.question-card-stable {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.question-card-enter-left {
+  animation: question-slide-in-left 0.36s ease forwards;
+}
+
+.question-card-exit-right {
+  animation: question-slide-out-right 0.36s ease forwards;
+}
+
+.question-label {
+  margin-bottom: 10px;
+  font-weight: 600;
+  color: #17322d;
+}
+
+.question-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.release-notes-button {
+  border-radius: 999px;
+}
+
+.release-notes-panel {
+  width: min(420px, calc(100vw - 48px));
+  display: grid;
+  gap: 14px;
+  max-height: min(56vh, 420px);
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.release-notes-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.release-notes-panel::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(15, 118, 110, 0.22);
+}
+
+.release-note-entry {
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(15, 118, 110, 0.12);
+}
+
+.release-note-entry:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.release-note-date {
+  display: inline-block;
+  margin-bottom: 6px;
+  color: #0f766e;
+  font-weight: 600;
+}
+
+.release-note-list {
+  margin: 0;
+  padding-left: 18px;
+  color: #32524a;
+}
+
+.error-float-wrap {
+  position: fixed;
+  right: 28px;
+  bottom: 28px;
+  z-index: 1100;
+}
+
+.error-float-button {
+  width: 56px;
+  height: 56px;
+  border: 0;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: #fff7ed;
+  background: linear-gradient(135deg, #dc2626 0%, #ea580c 100%);
+  box-shadow: 0 16px 34px rgba(220, 38, 38, 0.28);
+  cursor: pointer;
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+  font-size: 24px;
+}
+
+.error-float-button:hover {
+  transform: scale(1.12);
+  box-shadow: 0 22px 42px rgba(220, 38, 38, 0.36);
+}
+
+.error-float-panel {
+  width: min(420px, calc(100vw - 64px));
+}
+
+.error-float-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-weight: 600;
+  color: #7f1d1d;
+}
+
+.error-float-list {
+  display: grid;
+  gap: 10px;
+  max-height: min(52vh, 420px);
+  overflow: auto;
+}
+
+.error-float-item {
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(220, 38, 38, 0.12);
+  background: #fff7f7;
+}
+
+.error-float-time {
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #b91c1c;
+}
+
+.error-float-message {
+  color: #4b5563;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.notes-dashboard {
+  display: grid;
+  gap: 18px;
+  position: relative;
+}
+
+.note-compose,
+.note-calendar-shell,
+.note-detail-page {
+  padding: 22px;
+}
+
+.note-compose {
+  display: grid;
+  gap: 14px;
+}
+
+.note-calendar-head,
+.note-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.note-calendar-loading {
+  min-height: 240px;
+  display: grid;
+  place-items: center;
+}
+
+.note-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.note-weekday {
+  padding: 0 4px 4px;
+  color: #60756f;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.note-day {
+  min-height: 82px;
+  border: 1px solid rgba(15, 118, 110, 0.12);
+  border-radius: 18px;
+  background: #f6f8f3;
+  color: #17322d;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 10px;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.note-day:hover {
+  transform: scale(1.06);
+  border-color: rgba(15, 118, 110, 0.36);
+  box-shadow: 0 14px 26px rgba(15, 118, 110, 0.14);
+  z-index: 2;
+}
+
+.note-day span {
+  font-weight: 700;
+}
+
+.note-day small {
+  color: #28554c;
+  font-weight: 600;
+}
+
+.note-day-muted {
+  opacity: 0.42;
+}
+
+.note-day-selected {
+  outline: 3px solid rgba(15, 118, 110, 0.22);
+}
+
+.note-day-level-1 {
+  background: #dff6e7;
+}
+
+.note-day-level-2 {
+  background: #b9eccd;
+}
+
+.note-day-level-3 {
+  background: #73d79b;
+}
+
+.note-day-level-4 {
+  background: #209653;
+  color: #f6fff9;
+}
+
+.note-day-level-4 small {
+  color: #e4ffed;
+}
+
+.note-popover {
+  max-width: 320px;
+  display: grid;
+  gap: 10px;
+}
+
+.note-popover-item {
+  display: grid;
+  gap: 6px;
+}
+
+.note-popover-item .ant-typography {
+  margin-bottom: 0;
+}
+
+.note-edit-list {
+  display: grid;
+  gap: 14px;
+}
+
+.note-edit-item {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(15, 118, 110, 0.12);
+  background: rgba(246, 251, 248, 0.88);
+}
+
+.note-edit-meta {
+  justify-content: space-between;
+}
+
+.note-action-rail {
+  position: fixed;
+  right: 28px;
+  top: 220px;
+  z-index: 900;
+  width: 186px;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(15, 118, 110, 0.14);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.1);
+  backdrop-filter: blur(18px);
+}
+
+@keyframes question-slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-112%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes question-slide-out-right {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateX(112%);
+  }
+}
+
+@media (max-width: 768px) {
+  .app-shell {
+    padding: 18px 12px 32px;
+  }
+
+  .hero {
+    padding: 22px 18px;
+    border-radius: 22px;
+  }
+
+  .error-float-wrap {
+    right: 18px;
+    bottom: 18px;
+  }
+
+  .note-calendar-head,
+  .note-detail-head {
+    display: grid;
+  }
+
+  .note-calendar-grid {
+    gap: 6px;
+  }
+
+  .note-day {
+    min-height: 58px;
+    border-radius: 12px;
+    padding: 7px;
+  }
+
+  .note-day small {
+    display: none;
+  }
+
+  .note-action-rail {
+    position: static;
+    width: auto;
+    order: -1;
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "backup_id": "20260603_234249_a6ec5187",
+  "created_at": "2026-06-03T23:42:49",
+  "dailychewer_version": "0.1.0",
+  "includes": {
+    "db": false,
+    "files": true,
+    "logs": false
+  },
+  "database": null,
+  "files": [
+    {
+      "path": "files/index.json",
+      "sha256": "483b73838adde525f96907599b691bcca5ac969d5d316631f625af574c5a7a41",
+      "size_bytes": 45
+    },
+    {
+      "path": "files/monthly/.gitkeep",
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "size_bytes": 1
+    }
+  ],
+  "source": {
+    "data_dir": "data",
+    "database_url_host": null,
+    "database_name": null
+  }
+}

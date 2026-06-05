@@ -1,0 +1,17 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+ARG NPM_CONFIG_REGISTRY=https://registry.npmmirror.com
+
+# Configure npm registry for mainland-China-friendly installs.
+RUN npm config set registry ${NPM_CONFIG_REGISTRY}
+
+# Install dependencies from lockfile when available for reproducible builds.
+COPY package.json package-lock.json* ./
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+# Copy source after dependency install so code edits do not invalidate node_modules.
+COPY . .
+
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

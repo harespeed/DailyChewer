@@ -1,0 +1,75 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dailychewer"
+version = "0.1.0"
+description = "A local-first CLI for daily report optimization and weekly report generation."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+  { name = "OpenAI Codex" }
+]
+dependencies = [
+  "typer>=0.12.3",
+  "rich>=13.7.1",
+  "pandas>=2.2.2",
+  "openpyxl>=3.1.2",
+  "python-docx>=1.1.2",
+  "python-dotenv>=1.0.1",
+  "pydantic>=2.7.1",
+  "requests>=2.31.0",
+  "fastapi>=0.116.1",
+  "uvicorn[standard]>=0.35.0",
+  "python-multipart>=0.0.20",
+  "sqlalchemy>=2.0.36",
+  "alembic>=1.14.0",
+  "psycopg[binary]>=3.2.1",
+  "bcrypt==4.0.1",
+  "passlib[bcrypt]==1.7.4",
+  "python-jose[cryptography]>=3.3.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.2.0",
+]
+
+[project.scripts]
+dailychewer = "dailychewer_cli.cli:app"
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "backend/tests", "cli/tests"]
+
+[tool.setuptools]
+include-package-data = true
+packages = [
+  "dailychewer",
+  "dailychewer.llm",
+  "dailychewer.parser",
+  "dailychewer.report",
+  "dailychewer.storage",
+  "dailychewer.utils",
+  "dailychewer_backend",
+  "dailychewer_backend.llm",
+  "dailychewer_backend.parser",
+  "dailychewer_backend.report",
+  "dailychewer_backend.db",
+  "dailychewer_backend.db.migrations",
+  "dailychewer_backend.auth",
+  "dailychewer_backend.services",
+  "dailychewer_backend.storage",
+  "dailychewer_backend.utils",
+  "dailychewer_cli",
+  "backend",
+  "backend.api",
+  "backend.api.routes",
+]
+
+[tool.setuptools.package-dir]
+dailychewer = "dailychewer"
+dailychewer_backend = "backend/dailychewer_backend"
+dailychewer_cli = "cli/dailychewer_cli"
+backend = "backend"
