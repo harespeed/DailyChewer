@@ -50,9 +50,9 @@ body::after {
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(circle at 18% 10%, rgba(255, 255, 255, 0.72), transparent 26%),
-    linear-gradient(180deg, rgba(248, 251, 248, 0.72), rgba(242, 245, 239, 0.82));
-  backdrop-filter: blur(1.5px);
+    radial-gradient(circle at 18% 10%, rgba(255, 255, 255, 0.34), transparent 24%),
+    linear-gradient(180deg, rgba(248, 251, 248, 0.3), rgba(242, 245, 239, 0.42));
+  backdrop-filter: blur(0.6px);
 }
 
 #root {
@@ -148,6 +148,22 @@ body::after {
   white-space: pre-wrap;
   margin: 0;
   font-family: "IBM Plex Sans", sans-serif;
+}
+
+.search-form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(160px, 1fr));
+  gap: 12px 14px;
+  align-items: end;
+}
+
+.search-form-grid .ant-form-item {
+  margin-bottom: 0;
+}
+
+.search-form-grid .ant-input,
+.search-form-grid .ant-btn {
+  height: 38px;
 }
 
 .mt-12 {
@@ -589,5 +605,9 @@ body::after {
     position: static;
     width: auto;
     order: -1;
+  }
+
+  .search-form-grid {
+    grid-template-columns: 1fr;
   }
 }

@@ -6,6 +6,20 @@ export type ReleaseNote = {
 
 export const releaseNotes: ReleaseNote[] = [
   {
+    timestamp: "2026-06-06 01:26",
+    title: "搜索表单对齐",
+    items: [
+      "搜索历史日报页面的输入框改为统一网格布局，关键词、日期、项目、标签和数量字段保持对齐。",
+    ],
+  },
+  {
+    timestamp: "2026-06-06 01:23",
+    title: "壁纸清晰度调整",
+    items: [
+      "降低 Web 背景壁纸上的白色遮罩和模糊强度，让风景壁纸显示得更清晰。",
+    ],
+  },
+  {
     timestamp: "2026-06-05 18:33",
     title: "使用说明入口",
     items: [

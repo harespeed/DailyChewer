@@ -28,7 +28,7 @@ export function SearchPanel() {
 
   return (
     <Card className="glass-card" title="搜索历史日报">
-      <Form layout="inline" form={form} initialValues={{ limit: 10 }}>
+      <Form className="search-form-grid" layout="vertical" form={form} initialValues={{ limit: 10 }}>
         <Form.Item name="q" label="关键词">
           <Input placeholder="错误码" />
         </Form.Item>
@@ -50,9 +50,11 @@ export function SearchPanel() {
         <Form.Item name="limit" label="数量">
           <Input />
         </Form.Item>
-        <Button type="primary" onClick={handleSearch} loading={loading}>
-          Search
-        </Button>
+        <Form.Item label=" ">
+          <Button type="primary" block onClick={handleSearch} loading={loading}>
+            Search
+          </Button>
+        </Form.Item>
       </Form>
       <Table
         className="mt-16"
