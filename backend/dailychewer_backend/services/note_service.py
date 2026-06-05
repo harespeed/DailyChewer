@@ -124,13 +124,28 @@ class DailyNoteService:
         resolved_date = normalize_date(note_date)
         week = iso_week_for_date(resolved_date)
         from_date, to_date = week_bounds(week)
+        return self.generate_weekly_range(from_date=from_date, to_date=to_date)
+
+    def generate_weekly_range(self, from_date: str, to_date: str) -> dict:
+        """Generate and save a weekly/stage report for an explicit note date range."""
+
+        resolved_from = normalize_date(from_date)
+        resolved_to = normalize_date(to_date)
+        if parse_date(resolved_from) > parse_date(resolved_to):
+            raise ValueError("起始日期不能晚于目标日期。")
+        records = self._list_notes(from_date=parse_date(resolved_from), to_date=parse_date(resolved_to))
+        if not records:
+            raise ValueError("该时间段还没有便条。")
+        note_dates = sorted({record.note_date.isoformat() for record in records})
+        for note_date in note_dates:
+            self.generate_daily(note_date)
         result = WeeklyService(
             project_root=self.settings.project_root,
             user_context=self.user_context,
         ).build_weekly_report(
-            week=week,
-            from_date=from_date,
-            to_date=to_date,
+            week=None,
+            from_date=resolved_from,
+            to_date=resolved_to,
             fmt="markdown",
             style="concise",
             project=None,

@@ -144,19 +144,36 @@ class DailyReportRepository:
         daily_report_json: dict,
         tags: list[Tag],
     ) -> DailyReportRecord:
-        record = DailyReportRecord(
-            user_id=user_id,
-            date=report_date,
-            weekday=weekday,
-            iso_week=iso_week,
-            project_id=project_id,
-            source_format=source_format,
-            raw_file_path=raw_file_path,
-            optimized_file_path=optimized_file_path,
-            quality_score_total=quality_score_total,
-            daily_report_json=daily_report_json,
-            tags=tags,
+        record = self.session.scalar(
+            select(DailyReportRecord).where(
+                DailyReportRecord.user_id == user_id,
+                DailyReportRecord.date == report_date,
+                DailyReportRecord.project_id == project_id,
+            )
         )
+        if record is None:
+            record = DailyReportRecord(
+                user_id=user_id,
+                date=report_date,
+                weekday=weekday,
+                iso_week=iso_week,
+                project_id=project_id,
+                source_format=source_format,
+                raw_file_path=raw_file_path,
+                optimized_file_path=optimized_file_path,
+                quality_score_total=quality_score_total,
+                daily_report_json=daily_report_json,
+                tags=tags,
+            )
+        else:
+            record.weekday = weekday
+            record.iso_week = iso_week
+            record.source_format = source_format
+            record.raw_file_path = raw_file_path
+            record.optimized_file_path = optimized_file_path
+            record.quality_score_total = quality_score_total
+            record.daily_report_json = daily_report_json
+            record.tags = tags
         self.session.add(record)
         self.session.commit()
         self.session.refresh(record)

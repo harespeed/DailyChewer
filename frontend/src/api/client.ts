@@ -286,6 +286,14 @@ export async function generateWeeklyFromNotes(date: string) {
   return response.data;
 }
 
+export async function generateWeeklyRangeFromNotes(payload: { from_date: string; to_date: string }) {
+  const response = await api.post<{ file?: string; file_id?: string; preview: string; download_url?: string | null }>(
+    "/api/notes/generate-weekly-range",
+    payload,
+  );
+  return response.data;
+}
+
 export async function generateWeekly(payload: {
   week?: string;
   from_date?: string;

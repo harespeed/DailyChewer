@@ -91,7 +91,7 @@ export function ReleaseNotesButton() {
       content={<ReleaseNotesContent onViewedAll={markAllViewed} />}
     >
       <Badge count={unseenCount} size="small">
-        <Button icon={<NotificationOutlined />} className="release-notes-button">
+        <Button icon={<NotificationOutlined />} className="hero-action-button release-notes-button">
           更新日志
         </Button>
       </Badge>

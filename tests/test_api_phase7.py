@@ -166,12 +166,29 @@ def test_health_endpoint(db_client) -> None:
     assert response.json() == {"status": "ok", "app": "DailyChewer"}
 
 
-def test_doctor_endpoint(db_client) -> None:
-    client, _ = db_client
+def test_doctor_endpoint_requires_admin(db_client) -> None:
+    client, settings = db_client
     response = client.get("/api/doctor")
 
-    assert response.status_code == 200
-    assert "checks" in response.json()
+    assert response.status_code == 401
+
+    user_auth = _register_and_login(client, "doctor-user")
+    user_response = client.get("/api/doctor", headers=_auth_headers(user_auth["access_token"]))
+
+    assert user_response.status_code == 403
+
+    admin_auth = _register_and_login(client, "admin")
+    with get_session_maker(settings)() as session:
+        user = UserRepository(session).get_by_username("admin")
+        assert user is not None
+        user.is_admin = True
+        session.add(user)
+        session.commit()
+    admin_auth = client.post("/api/auth/login", json={"username": "admin", "password": "password123"}).json()
+    admin_response = client.get("/api/doctor", headers=_auth_headers(admin_auth["access_token"]))
+
+    assert admin_response.status_code == 200
+    assert "checks" in admin_response.json()
 
 
 def test_user_register_success(db_client) -> None:
@@ -318,6 +335,20 @@ def test_daily_notes_calendar_crud(db_client) -> None:
     empty_response = client.get("/api/notes", params={"month": "2026-06"}, headers=headers)
     assert empty_response.status_code == 200, empty_response.text
     assert empty_response.json()["days"] == []
+
+
+def test_daily_notes_weekly_range_route_validates_empty_range(db_client) -> None:
+    client, _ = db_client
+    auth = _register_and_login(client, "range-user")
+
+    response = client.post(
+        "/api/notes/generate-weekly-range",
+        json={"from_date": "2026-06-01", "to_date": "2026-06-05"},
+        headers=_auth_headers(auth["access_token"]),
+    )
+
+    assert response.status_code == 400, response.text
+    assert response.json()["detail"] == "该时间段还没有便条。"
 
 
 def test_download_blocks_path_traversal_for_authenticated_user(db_client) -> None:

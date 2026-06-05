@@ -80,6 +80,13 @@ class DailyNoteUpdateRequest(BaseModel):
     period: str | None = None
 
 
+class DailyNoteRangeWeeklyRequest(BaseModel):
+    """Request payload for generating a range weekly/stage report from notes."""
+
+    from_date: str
+    to_date: str
+
+
 class DailyNoteResponse(BaseModel):
     """Daily note payload returned to the frontend."""
 

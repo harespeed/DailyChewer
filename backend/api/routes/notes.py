@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from backend.api.schemas import DailyNoteCreateRequest, DailyNoteUpdateRequest
+from backend.api.schemas import DailyNoteCreateRequest, DailyNoteRangeWeeklyRequest, DailyNoteUpdateRequest
 from dailychewer_backend.auth.dependencies import get_current_user
 from dailychewer_backend.models import UserContext
 from dailychewer_backend.services.note_service import DailyNoteService
@@ -44,6 +44,19 @@ def create_note(payload: DailyNoteCreateRequest, current_user=Depends(get_curren
             period=payload.period,
         )
         return DailyNoteService.serialize_note(record)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/generate-weekly-range")
+def generate_weekly_from_note_range(payload: DailyNoteRangeWeeklyRequest, current_user=Depends(get_current_user)) -> dict:
+    """Generate and save a weekly/stage report for an explicit note date range."""
+
+    try:
+        return _service(current_user).generate_weekly_range(
+            from_date=payload.from_date,
+            to_date=payload.to_date,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

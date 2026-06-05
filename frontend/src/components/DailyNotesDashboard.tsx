@@ -9,6 +9,7 @@ import {
   downloadProtectedFile,
   fetchDailyNotes,
   generateDailyFromNotes,
+  generateWeeklyRangeFromNotes,
   generateWeeklyFromNotes,
   updateDailyNote,
 } from "../api/client";
@@ -47,6 +48,14 @@ function currentPeriod() {
   return new Date().getHours() < 12 ? "morning" : "afternoon";
 }
 
+function normalizeRange(left: string, right: string) {
+  return left <= right ? { from: left, to: right } : { from: right, to: left };
+}
+
+function isDateInRange(date: string, from: string, to: string) {
+  return date >= from && date <= to;
+}
+
 function notePreview(day?: DailyNoteDay) {
   if (!day) {
     return <Typography.Text type="secondary">No note yet.</Typography.Text>;
@@ -78,6 +87,8 @@ function getNotesErrorMessage(error: any, fallback: string) {
 export function DailyNotesDashboard() {
   const [viewDate, setViewDate] = useState(() => new Date());
   const [selectedDate, setSelectedDate] = useState(() => toDateKey(new Date()));
+  const [rangeStart, setRangeStart] = useState(() => toDateKey(new Date()));
+  const [rangeEnd, setRangeEnd] = useState(() => toDateKey(new Date()));
   const [days, setDays] = useState<DailyNoteDay[]>([]);
   const [noteText, setNoteText] = useState("");
   const [period, setPeriod] = useState(() => currentPeriod());
@@ -95,6 +106,12 @@ export function DailyNotesDashboard() {
   const cells = useMemo(() => buildMonthCells(viewDate), [viewDate]);
   const dayMap = useMemo(() => new Map(days.map((day) => [day.date, day])), [days]);
   const selectedDay = dayMap.get(selectedDate);
+  const selectedRange = useMemo(() => normalizeRange(rangeStart, rangeEnd), [rangeStart, rangeEnd]);
+  const rangeDaysWithNotes = useMemo(
+    () => days.filter((day) => isDateInRange(day.date, selectedRange.from, selectedRange.to)),
+    [days, selectedRange],
+  );
+  const isRangeMode = selectedRange.from !== selectedRange.to;
 
   const notifyError = (error: any, fallback: string) => {
     const errorMessage = getNotesErrorMessage(error, fallback);
@@ -176,9 +193,11 @@ export function DailyNotesDashboard() {
   const generateWeekly = async () => {
     setGeneratingWeekly(true);
     try {
-      const result = await generateWeeklyFromNotes(selectedDate);
+      const result = isRangeMode
+        ? await generateWeeklyRangeFromNotes({ from_date: selectedRange.from, to_date: selectedRange.to })
+        : await generateWeeklyFromNotes(selectedDate);
       setWeeklyResult(result);
-      message.success("Weekly report generated.");
+      message.success(isRangeMode ? "Stage report generated." : "Weekly report generated.");
     } catch (error: any) {
       notifyError(error, "Failed to generate weekly report.");
     } finally {
@@ -190,9 +209,37 @@ export function DailyNotesDashboard() {
     setViewDate((current) => new Date(current.getFullYear(), current.getMonth() + offset, 1));
   };
 
+  const selectCalendarDate = (date: string, shiftKey: boolean) => {
+    setSelectedDate(date);
+    if (shiftKey) {
+      setRangeEnd(date);
+      return;
+    }
+    setRangeStart(date);
+    setRangeEnd(date);
+  };
+
+  const updateRangeStart = (date: string) => {
+    setRangeStart(date);
+    setSelectedDate(date);
+  };
+
+  const updateRangeEnd = (date: string) => {
+    setRangeEnd(date);
+    setSelectedDate(date);
+  };
+
   return (
     <div className="notes-dashboard">
       <div className="note-action-rail">
+        <div className="note-range-box">
+          <Typography.Text strong>{isRangeMode ? "阶段范围" : "当前日期"}</Typography.Text>
+          <Input size="small" type="date" value={rangeStart} onChange={(event) => updateRangeStart(event.target.value)} />
+          <Input size="small" type="date" value={rangeEnd} onChange={(event) => updateRangeEnd(event.target.value)} />
+          <Typography.Text type="secondary">
+            {isRangeMode ? `${rangeDaysWithNotes.length} 天有便条` : selectedDate}
+          </Typography.Text>
+        </div>
         <Button
           type="primary"
           icon={<FileTextOutlined />}
@@ -202,8 +249,8 @@ export function DailyNotesDashboard() {
         >
           生成并优化日报
         </Button>
-        <Button disabled={!dailyResult} loading={generatingWeekly} onClick={generateWeekly}>
-          生成并优化周报
+        <Button disabled={isRangeMode ? !rangeStart || !rangeEnd : !dailyResult} loading={generatingWeekly} onClick={generateWeekly}>
+          {isRangeMode ? "生成并优化阶段报" : "生成并优化周报"}
         </Button>
         {weeklyResult?.download_url ? (
           <Button icon={<DownloadOutlined />} onClick={() => downloadProtectedFile(weeklyResult.download_url || "")}>
@@ -217,7 +264,7 @@ export function DailyNotesDashboard() {
           <Typography.Text className="eyebrow">Daily note</Typography.Text>
           <Typography.Title level={3}>写一条便条，系统会自动绑定日期和上午/下午。</Typography.Title>
           <Typography.Text type="secondary">
-            当前选择：{selectedDate} · {periodLabels[period]} · {new Date(`${selectedDate}T00:00:00`).toLocaleDateString(undefined, { weekday: "long" })}
+            当前选择：{selectedDate} · {isRangeMode ? `${selectedRange.from} 至 ${selectedRange.to}` : "单日"} · {periodLabels[period]}
           </Typography.Text>
         </div>
         <Input.TextArea
@@ -267,6 +314,7 @@ export function DailyNotesDashboard() {
               const key = toDateKey(cell);
               const day = dayMap.get(key);
               const isCurrentMonth = cell.getMonth() === viewDate.getMonth();
+              const isInSelectedRange = isDateInRange(key, selectedRange.from, selectedRange.to);
               return (
                 <Popover key={key} content={notePreview(day)} trigger="hover" placement="top">
                   <button
@@ -275,8 +323,10 @@ export function DailyNotesDashboard() {
                       `note-day-level-${day?.detail_level || 0}`,
                       isCurrentMonth ? "" : "note-day-muted",
                       key === selectedDate ? "note-day-selected" : "",
+                      isInSelectedRange ? "note-day-range-selected" : "",
+                      isRangeMode && (key === selectedRange.from || key === selectedRange.to) ? "note-day-range-edge" : "",
                     ].join(" ")}
-                    onClick={() => setSelectedDate(key)}
+                    onClick={(event) => selectCalendarDate(key, event.shiftKey)}
                   >
                     <span>{cell.getDate()}</span>
                     {day ? <small>{day.note_count} note</small> : null}

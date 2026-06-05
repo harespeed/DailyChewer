@@ -6,6 +6,23 @@ export type ReleaseNote = {
 
 export const releaseNotes: ReleaseNote[] = [
   {
+    timestamp: "2026-06-05 18:33",
+    title: "使用说明入口",
+    items: [
+      "右上角新增“使用说明”按钮，hover 后可查看各页面按钮的作用和基本用法。",
+      "右上角操作按钮统一为相同宽高比例，包含使用说明、更新日志和 Logout。",
+    ],
+  },
+  {
+    timestamp: "2026-06-05 14:33",
+    title: "Calendar 范围阶段报",
+    items: [
+      "Calendar 支持普通点击选择起始日期，按住 Shift 点击目标日期后高亮起止日期之间的范围。",
+      "右侧跟随滚动操作区新增起止日期输入，可直接手动填写日期范围。",
+      "范围模式下点击“生成并优化阶段报”会先将范围内有便条的日期生成日报，再生成该时间段的周报/阶段报。",
+    ],
+  },
+  {
     timestamp: "2026-06-05 11:09",
     title: "壁纸加载淡入",
     items: [

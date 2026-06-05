@@ -13,6 +13,7 @@ import { AdminUsersPanel } from "./components/AdminUsersPanel";
 import { ReleaseNotesButton } from "./components/ReleaseNotesButton";
 import { DailyNotesDashboard } from "./components/DailyNotesDashboard";
 import { WallpaperBackdrop } from "./components/WallpaperBackdrop";
+import { UsageGuideButton } from "./components/UsageGuideButton";
 
 export default function App() {
   const { user, loading, logout } = useAuth();
@@ -45,9 +46,13 @@ export default function App() {
     { key: "monthly", label: "Monthly", children: <MonthlyPanel /> },
     { key: "search", label: "Search", children: <SearchPanel /> },
     { key: "template", label: "Template", children: <TemplatePanel /> },
-    { key: "doctor", label: "Doctor", children: <DoctorPanel /> },
     { key: "account", label: "Account", children: <AccountPanel /> },
-    ...(user.is_admin ? [{ key: "admin-users", label: "Admin Users", children: <AdminUsersPanel /> }] : []),
+    ...(user.is_admin
+      ? [
+          { key: "doctor", label: "Doctor", children: <DoctorPanel /> },
+          { key: "admin-users", label: "Admin Users", children: <AdminUsersPanel /> },
+        ]
+      : []),
   ];
 
   return (
@@ -60,9 +65,10 @@ export default function App() {
             <Typography.Title level={1}>日报优化、周报月报与检索，一套入口。</Typography.Title>
           </div>
           <div className="hero-user">
+            <UsageGuideButton isAdmin={user.is_admin} />
             <ReleaseNotesButton />
             <Typography.Text>{user.display_name || user.username}</Typography.Text>
-            <Button onClick={logout}>Logout</Button>
+            <Button className="hero-action-button" onClick={logout}>Logout</Button>
           </div>
         </Space>
         <Typography.Paragraph>
