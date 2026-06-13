@@ -303,6 +303,7 @@ class ReportOptimizer:
     def _validate_daily_report(self, payload: dict[str, Any], date: str) -> DailyReport:
         """Apply defaults and validate one daily report payload."""
 
+        payload = self._coerce_daily_report_payload(payload)
         payload.setdefault("date", date)
         payload.setdefault("weekday", weekday_name(date))
         payload.setdefault("week", iso_week_for_date(date))
@@ -330,6 +331,7 @@ class ReportOptimizer:
     ) -> WeeklyReport:
         """Apply defaults and validate one weekly report payload."""
 
+        payload = self._coerce_weekly_report_payload(payload, week=week)
         if date_range:
             from_date, to_date = date_range
             payload.setdefault("start_date", normalize_date(from_date))
@@ -369,6 +371,124 @@ class ReportOptimizer:
         if "ok" not in payload:
             raise ValueError("Connectivity response is missing the `ok` field.")
         return payload
+
+    def _coerce_weekly_report_payload(self, payload: dict[str, Any], week: str) -> dict[str, Any]:
+        """Normalize common LLM weekly shapes before Pydantic validation."""
+
+        normalized = dict(payload)
+        days_payload = normalized.get("days", {})
+        normalized_days: dict[str, Any] = {}
+        if isinstance(days_payload, list):
+            iterable_days = days_payload
+        elif isinstance(days_payload, dict):
+            iterable_days = []
+            for key, value in days_payload.items():
+                if isinstance(value, dict):
+                    day_payload = dict(value)
+                    if "date" not in day_payload and self._looks_like_date(key):
+                        day_payload["date"] = key
+                    if "weekday" not in day_payload and not self._looks_like_date(key):
+                        day_payload["weekday"] = key
+                    iterable_days.append(day_payload)
+                else:
+                    iterable_days.append(
+                        {
+                            "date": key if self._looks_like_date(key) else "",
+                            "weekday": weekday_name(key) if self._looks_like_date(key) else key,
+                            "morning": {"work_content": value},
+                            "afternoon": {},
+                        }
+                    )
+        else:
+            iterable_days = []
+
+        for index, day_payload in enumerate(iterable_days):
+            if not isinstance(day_payload, dict):
+                continue
+            daily_payload = self._coerce_daily_report_payload(day_payload)
+            daily_payload.setdefault("week", week)
+            date_value = str(daily_payload.get("date") or "").strip()
+            weekday_value = str(daily_payload.get("weekday") or "").strip()
+            key = date_value or weekday_value or f"day_{index + 1}"
+            normalized_days[key] = daily_payload
+        normalized["days"] = normalized_days
+        normalized["weekly_gains"] = self._coerce_string_list(normalized.get("weekly_gains", []))
+        return normalized
+
+    def _coerce_daily_report_payload(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Normalize common LLM daily shapes before Pydantic validation."""
+
+        normalized = dict(payload)
+        normalized["morning"] = self._coerce_report_section(normalized.get("morning"))
+        normalized["afternoon"] = self._coerce_report_section(normalized.get("afternoon"))
+        normalized["questions"] = self._coerce_string_list(normalized.get("questions", []))
+        if "quality_score" in normalized and normalized["quality_score"] is not None:
+            normalized["quality_score"] = self._coerce_quality_score(normalized["quality_score"])
+        return normalized
+
+    def _coerce_report_section(self, payload: Any) -> dict[str, list[str]]:
+        """Convert loose section output into the expected section fields."""
+
+        if isinstance(payload, str):
+            payload = {"work_content": [payload]}
+        elif isinstance(payload, list):
+            payload = {"work_content": payload}
+        elif not isinstance(payload, dict):
+            payload = {}
+        return {
+            "work_content": self._coerce_string_list(payload.get("work_content") or payload.get("work") or payload.get("工作内容")),
+            "personal_growth": self._coerce_string_list(
+                payload.get("personal_growth") or payload.get("growth") or payload.get("个人成长")
+            ),
+            "problems": self._coerce_string_list(payload.get("problems") or payload.get("issues") or payload.get("问题")),
+            "solutions": self._coerce_string_list(payload.get("solutions") or payload.get("解决方案")),
+        }
+
+    def _coerce_quality_score(self, payload: Any) -> dict[str, Any] | None:
+        """Keep quality score validation from failing on partial model output."""
+
+        if not isinstance(payload, dict):
+            return None
+        normalized: dict[str, Any] = {}
+        for field in [
+            "work_clarity",
+            "progress_clarity",
+            "problem_completeness",
+            "solution_clarity",
+            "growth_reflection",
+        ]:
+            try:
+                normalized[field] = max(0, min(5, int(payload.get(field, 0))))
+            except (TypeError, ValueError):
+                normalized[field] = 0
+        try:
+            normalized["total"] = int(payload.get("total", sum(normalized.values())))
+        except (TypeError, ValueError):
+            normalized["total"] = sum(normalized.values())
+        normalized["comments"] = self._coerce_string_list(payload.get("comments", []))
+        return normalized
+
+    def _coerce_string_list(self, value: Any) -> list[str]:
+        """Convert scalar or mixed values into a clean list of strings."""
+
+        if value is None:
+            return []
+        if isinstance(value, str):
+            items = [value]
+        elif isinstance(value, list):
+            items = value
+        else:
+            items = [value]
+        return [str(item).strip() for item in items if str(item).strip()]
+
+    def _looks_like_date(self, value: Any) -> bool:
+        """Return whether a value is an ISO date string."""
+
+        try:
+            normalize_date(str(value))
+            return True
+        except Exception:
+            return False
 
     def _fill_missing_weekdays(self, report: WeeklyReport) -> WeeklyReport:
         """Guarantee Monday-Friday keys exist, even when some days are missing."""

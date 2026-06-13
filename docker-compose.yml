@@ -30,6 +30,7 @@ services:
         required: false
     volumes:
       - ./backend:/app/backend
+      - ./config:/app/config
       - ./alembic.ini:/app/alembic.ini
       - ./data:/app/data
       - ./input:/app/input
@@ -60,6 +61,7 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app/backend
+      - ./config:/app/config
       - ./alembic.ini:/app/alembic.ini
       - ./data:/app/data
       - ./input:/app/input

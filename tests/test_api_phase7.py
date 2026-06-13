@@ -1,6 +1,8 @@
 import importlib
 import json
+from datetime import date
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from typer.testing import CliRunner
@@ -19,8 +21,10 @@ from dailychewer_backend.db.repositories import UploadedFileRepository, UserRepo
 from dailychewer_backend.db.session import get_engine, get_session_maker
 from dailychewer_backend.models import DailyQualityScore, DailyReport, ReportSection, UserContext
 from dailychewer_backend.services.ingest_service import IngestService
+from dailychewer_backend.services.note_service import DailyNoteService
 from dailychewer_backend.services.search_service import SearchService
 from dailychewer_backend.services.template_service import TemplateService
+from dailychewer_backend.services.weekly_service import WeeklyService
 from dailychewer_cli.cli import app as cli_app
 
 
@@ -349,6 +353,107 @@ def test_daily_notes_weekly_range_route_validates_empty_range(db_client) -> None
 
     assert response.status_code == 400, response.text
     assert response.json()["detail"] == "该时间段还没有便条。"
+
+
+def test_daily_notes_weekly_range_task_returns_result(db_client, monkeypatch) -> None:
+    client, _ = db_client
+    auth = _register_and_login(client, "range-task-user")
+
+    class FakeDailyNoteService:
+        def __init__(self, *args, **kwargs) -> None:
+            return None
+
+        def generate_weekly_range(self, from_date: str, to_date: str) -> dict:
+            return {
+                "file": "/tmp/stage.md",
+                "file_id": "file-1",
+                "preview": f"{from_date}..{to_date}",
+                "download_url": "/api/files/file-1/download",
+            }
+
+    monkeypatch.setattr("dailychewer_backend.services.note_task_service.DailyNoteService", FakeDailyNoteService)
+
+    response = client.post(
+        "/api/notes/generate-weekly-range-tasks",
+        json={"from_date": "2026-06-01", "to_date": "2026-06-05"},
+        headers=_auth_headers(auth["access_token"]),
+    )
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["task_id"]
+    assert payload["status"] in {"pending", "running", "completed"}
+
+    task_response = client.get(
+        f"/api/notes/generate-weekly-range-tasks/{payload['task_id']}",
+        headers=_auth_headers(auth["access_token"]),
+    )
+
+    assert task_response.status_code == 200, task_response.text
+    task_payload = task_response.json()
+    assert task_payload["status"] == "completed"
+    assert task_payload["result"]["download_url"] == "/api/files/file-1/download"
+
+
+def test_daily_notes_weekly_range_skips_current_daily_reports(tmp_path: Path, monkeypatch) -> None:
+    service = DailyNoteService.__new__(DailyNoteService)
+    service.settings = SimpleNamespace(project_root=tmp_path)
+    service.user_context = UserContext(user_id="user-1", username="user", storage_mode="database")
+
+    class FakeRecord:
+        def __init__(self, note_date: date) -> None:
+            self.note_date = note_date
+
+    class FakeWeeklyService:
+        def __init__(self, *args, **kwargs) -> None:
+            return None
+
+        def build_weekly_report(self, **kwargs) -> SimpleNamespace:
+            return SimpleNamespace(
+                file="/tmp/stage.md",
+                file_id="file-1",
+                preview="stage preview",
+                download_path="/api/files/file-1/download",
+            )
+
+    generated_dates: list[str] = []
+    monkeypatch.setattr("dailychewer_backend.services.note_service.WeeklyService", FakeWeeklyService)
+    monkeypatch.setattr(
+        service,
+        "_list_notes",
+        lambda from_date, to_date: [FakeRecord(date(2026, 6, 10)), FakeRecord(date(2026, 6, 11))],
+    )
+    monkeypatch.setattr(service, "_daily_report_needs_regeneration", lambda note_date, records: note_date.endswith("-11"))
+    monkeypatch.setattr(service, "generate_daily", lambda note_date: generated_dates.append(note_date))
+
+    result = service.generate_weekly_range("2026-06-10", "2026-06-11")
+
+    assert generated_dates == ["2026-06-11"]
+    assert result["download_url"] == "/api/files/file-1/download"
+
+
+def test_weekly_service_builds_fallback_report_when_llm_json_parse_fails(tmp_path: Path) -> None:
+    service = WeeklyService.__new__(WeeklyService)
+    service.logger = SimpleNamespace(warning=lambda *args, **kwargs: None)
+    daily_report = DailyReport(
+        date="2026-06-12",
+        weekday="Friday",
+        week="2026-W24",
+        morning=ReportSection(work_content=["修复阶段报导出"], personal_growth=["解析流程更稳定"]),
+        afternoon=ReportSection(problems=["LLM JSON 输出不稳定"], solutions=["增加保守兜底"]),
+        questions=[],
+    )
+
+    report = service._build_fallback_weekly_report(
+        daily_reports=[daily_report],
+        week="2026-W24",
+        date_range=("2026-06-12", "2026-06-12"),
+        style="concise",
+    )
+
+    assert report.days["2026-06-12"].morning.work_content == ["修复阶段报导出"]
+    assert report.days["2026-06-12"].afternoon.solutions == ["增加保守兜底"]
+    assert report.weekly_gains == ["解析流程更稳定"]
 
 
 def test_download_blocks_path_traversal_for_authenticated_user(db_client) -> None:

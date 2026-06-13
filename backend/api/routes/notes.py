@@ -2,12 +2,19 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
-from backend.api.schemas import DailyNoteCreateRequest, DailyNoteRangeWeeklyRequest, DailyNoteUpdateRequest
+from backend.api.schemas import DailyNoteCreateRequest, DailyNoteRangeWeeklyRequest, DailyNoteRangeWeeklyTaskResponse, DailyNoteUpdateRequest
 from dailychewer_backend.auth.dependencies import get_current_user
+from dailychewer_backend.config import load_settings
 from dailychewer_backend.models import UserContext
 from dailychewer_backend.services.note_service import DailyNoteService
+from dailychewer_backend.services.note_task_service import (
+    create_note_weekly_range_task,
+    get_note_weekly_range_task,
+    run_note_weekly_range_task,
+    serialize_note_weekly_range_task,
+)
 
 
 router = APIRouter(prefix="/api/notes", tags=["notes"])
@@ -59,6 +66,35 @@ def generate_weekly_from_note_range(payload: DailyNoteRangeWeeklyRequest, curren
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/generate-weekly-range-tasks")
+def create_weekly_range_task(
+    payload: DailyNoteRangeWeeklyRequest,
+    background_tasks: BackgroundTasks,
+    current_user=Depends(get_current_user),
+) -> DailyNoteRangeWeeklyTaskResponse:
+    """Queue a long-running weekly/stage report generation task."""
+
+    task = create_note_weekly_range_task(
+        user_id=current_user.id,
+        username=current_user.username,
+        from_date=payload.from_date,
+        to_date=payload.to_date,
+    )
+    settings = load_settings()
+    background_tasks.add_task(run_note_weekly_range_task, task.id, settings.project_root)
+    return DailyNoteRangeWeeklyTaskResponse(**serialize_note_weekly_range_task(task))
+
+
+@router.get("/generate-weekly-range-tasks/{task_id}")
+def get_weekly_range_task(task_id: str, current_user=Depends(get_current_user)) -> DailyNoteRangeWeeklyTaskResponse:
+    """Return the current status and result for one note stage-report task."""
+
+    task = get_note_weekly_range_task(user_id=current_user.id, task_id=task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="Stage report task not found.")
+    return DailyNoteRangeWeeklyTaskResponse(**serialize_note_weekly_range_task(task))
 
 
 @router.get("/{note_date}")

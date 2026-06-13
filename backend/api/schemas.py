@@ -87,6 +87,20 @@ class DailyNoteRangeWeeklyRequest(BaseModel):
     to_date: str
 
 
+class DailyNoteRangeWeeklyTaskResponse(BaseModel):
+    """Queued stage report task metadata for API callers."""
+
+    task_id: str
+    from_date: str
+    to_date: str
+    status: str
+    result: dict | None = None
+    error_message: str | None = None
+    created_at: str | None = None
+    started_at: str | None = None
+    completed_at: str | None = None
+
+
 class DailyNoteResponse(BaseModel):
     """Daily note payload returned to the frontend."""
 

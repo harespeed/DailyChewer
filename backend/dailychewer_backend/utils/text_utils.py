@@ -60,17 +60,63 @@ def dataframe_to_markdown_table(dataframe: Any) -> str:
 
 
 def extract_json_payload(text: str) -> dict[str, Any]:
-    """Best-effort extraction of the first JSON object from model output."""
+    """Best-effort extraction of one JSON object from model output."""
 
-    fenced_match = re.search(r"```json\s*(\{.*?\})\s*```", text, flags=re.DOTALL)
-    if fenced_match:
-        return json.loads(fenced_match.group(1))
+    def parse_candidate(candidate: str) -> dict[str, Any]:
+        cleaned = candidate.strip().removeprefix("\ufeff").strip()
+        try:
+            payload = json.loads(cleaned)
+        except json.JSONDecodeError:
+            payload = json.loads(re.sub(r",\s*([}\]])", r"\1", cleaned))
+        if not isinstance(payload, dict):
+            raise ValueError("LLM JSON response must be an object.")
+        return payload
 
-    direct_match = re.search(r"(\{.*\})", text, flags=re.DOTALL)
-    if direct_match:
-        return json.loads(direct_match.group(1))
+    stripped = text.strip()
+    for fenced_match in re.finditer(r"```(?:json)?\s*(.*?)\s*```", stripped, flags=re.DOTALL | re.IGNORECASE):
+        fenced_content = fenced_match.group(1)
+        if "{" in fenced_content:
+            try:
+                return parse_candidate(_first_balanced_json_object(fenced_content))
+            except Exception:
+                continue
 
-    return json.loads(text)
+    if "{" in stripped:
+        return parse_candidate(_first_balanced_json_object(stripped))
+
+    return parse_candidate(stripped)
+
+
+def _first_balanced_json_object(text: str) -> str:
+    """Return the first balanced JSON object substring, respecting quoted braces."""
+
+    start = text.find("{")
+    if start < 0:
+        raise ValueError("No JSON object found in LLM response.")
+
+    depth = 0
+    in_string = False
+    escape_next = False
+    for index in range(start, len(text)):
+        char = text[index]
+        if in_string:
+            if escape_next:
+                escape_next = False
+            elif char == "\\":
+                escape_next = True
+            elif char == '"':
+                in_string = False
+            continue
+        if char == '"':
+            in_string = True
+        elif char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start : index + 1]
+
+    raise ValueError("No balanced JSON object found in LLM response.")
 
 
 def ensure_non_empty_text(text: str) -> str:
@@ -79,4 +125,3 @@ def ensure_non_empty_text(text: str) -> str:
     if not text or not text.strip():
         raise ValueError("文件内容为空，无法继续处理。")
     return text.strip()
-

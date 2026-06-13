@@ -12,7 +12,7 @@ from dailychewer_backend.db.repositories import (
     WeeklyReportRepository,
 )
 from dailychewer_backend.db.session import get_session_maker
-from dailychewer_backend.models import DateRange, ReportBuildResult, WeeklyIndexItem
+from dailychewer_backend.models import DateRange, ReportBuildResult, WeeklyIndexItem, WeeklyReport
 from dailychewer_backend.report.exporters import export_weekly_report, render_weekly_markdown
 from dailychewer_backend.report.weekly_builder import WeeklyReportBuilder
 from dailychewer_backend.services import (
@@ -102,12 +102,29 @@ class WeeklyService:
             preview,
             save,
         )
-        weekly_report = WeeklyReportBuilder(self.optimizer).build(
-            daily_reports,
-            target_week,
-            date_range=date_range,
-            style=resolved_style,
-        )
+        try:
+            weekly_report = WeeklyReportBuilder(self.optimizer).build(
+                daily_reports,
+                target_week,
+                date_range=date_range,
+                style=resolved_style,
+            )
+        except ValueError as exc:
+            if "Failed to parse LLM JSON response after retries" not in str(exc):
+                raise
+            self.logger.warning(
+                "weekly_llm_parse_failed_using_fallback week=%s date_range=%s reports=%s error=%s",
+                target_week,
+                date_range,
+                len(daily_reports),
+                exc,
+            )
+            weekly_report = self._build_fallback_weekly_report(
+                daily_reports=daily_reports,
+                week=target_week,
+                date_range=date_range,
+                style=resolved_style,
+            )
         preview_text = render_weekly_markdown(weekly_report)
         result = ReportBuildResult(
             report_type="weekly",
@@ -291,3 +308,33 @@ class WeeklyService:
         if not records:
             raise ValueError("No optimized daily reports found for the selected week or date range.")
         return records, [DailyReport.model_validate(record.daily_report_json) for record in records]
+
+    def _build_fallback_weekly_report(
+        self,
+        daily_reports: list[DailyReport],
+        week: str,
+        date_range: tuple[str, str] | None,
+        style: str,
+    ) -> WeeklyReport:
+        """Build a deterministic stage report from optimized dailies when LLM JSON fails."""
+
+        days = {report.date: report for report in sorted(daily_reports, key=lambda item: item.date)}
+        start_date = date_range[0] if date_range else (daily_reports[0].date if daily_reports else current_date_str())
+        end_date = date_range[1] if date_range else (daily_reports[-1].date if daily_reports else current_date_str())
+        gains: list[str] = []
+        seen: set[str] = set()
+        for report in sorted(daily_reports, key=lambda item: item.date):
+            for item in report.morning.personal_growth + report.afternoon.personal_growth:
+                cleaned = item.strip()
+                if cleaned and cleaned not in seen and cleaned != "暂无日报记录":
+                    seen.add(cleaned)
+                    gains.append(cleaned)
+        return WeeklyReport(
+            week=week,
+            start_date=start_date,
+            end_date=end_date,
+            date_range=DateRange.model_validate({"from": date_range[0], "to": date_range[1]}) if date_range else None,
+            style=style,
+            days=days,
+            weekly_gains=gains or ["LLM 周报汇总失败，已基于优化日报生成保守阶段报。"],
+        )

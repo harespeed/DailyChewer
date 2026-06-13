@@ -102,6 +102,25 @@ export interface DailyNotesResponse {
   days: DailyNoteDay[];
 }
 
+export interface NoteWeeklyRangeResult {
+  file?: string | null;
+  file_id?: string | null;
+  preview: string;
+  download_url?: string | null;
+}
+
+export interface NoteWeeklyRangeTaskResponse {
+  task_id: string;
+  from_date: string;
+  to_date: string;
+  status: "pending" | "running" | "completed" | "failed";
+  result?: NoteWeeklyRangeResult | null;
+  error_message?: string | null;
+  created_at?: string | null;
+  started_at?: string | null;
+  completed_at?: string | null;
+}
+
 export interface UserRead {
   id: string;
   username: string;
@@ -280,17 +299,30 @@ export async function generateDailyFromNotes(date: string) {
 }
 
 export async function generateWeeklyFromNotes(date: string) {
-  const response = await api.post<{ file?: string; file_id?: string; preview: string; download_url?: string | null }>(
+  const response = await api.post<NoteWeeklyRangeResult>(
     `/api/notes/${date}/generate-weekly`,
   );
   return response.data;
 }
 
 export async function generateWeeklyRangeFromNotes(payload: { from_date: string; to_date: string }) {
-  const response = await api.post<{ file?: string; file_id?: string; preview: string; download_url?: string | null }>(
+  const response = await api.post<NoteWeeklyRangeResult>(
     "/api/notes/generate-weekly-range",
     payload,
   );
+  return response.data;
+}
+
+export async function createWeeklyRangeTaskFromNotes(payload: { from_date: string; to_date: string }) {
+  const response = await api.post<NoteWeeklyRangeTaskResponse>(
+    "/api/notes/generate-weekly-range-tasks",
+    payload,
+  );
+  return response.data;
+}
+
+export async function fetchWeeklyRangeTaskFromNotes(taskId: string) {
+  const response = await api.get<NoteWeeklyRangeTaskResponse>(`/api/notes/generate-weekly-range-tasks/${taskId}`);
   return response.data;
 }
 

@@ -7,7 +7,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 from dailychewer_backend.db.models import DailyNoteRecord
-from dailychewer_backend.db.repositories import DailyNoteRepository
+from dailychewer_backend.db.repositories import DailyNoteRepository, DailyReportRepository
 from dailychewer_backend.db.session import get_session_maker
 from dailychewer_backend.models import UserContext
 from dailychewer_backend.services import build_runtime
@@ -136,9 +136,13 @@ class DailyNoteService:
         records = self._list_notes(from_date=parse_date(resolved_from), to_date=parse_date(resolved_to))
         if not records:
             raise ValueError("该时间段还没有便条。")
-        note_dates = sorted({record.note_date.isoformat() for record in records})
+        records_by_date: dict[str, list[DailyNoteRecord]] = defaultdict(list)
+        for record in records:
+            records_by_date[record.note_date.isoformat()].append(record)
+        note_dates = sorted(records_by_date)
         for note_date in note_dates:
-            self.generate_daily(note_date)
+            if self._daily_report_needs_regeneration(note_date, records_by_date[note_date]):
+                self.generate_daily(note_date)
         result = WeeklyService(
             project_root=self.settings.project_root,
             user_context=self.user_context,
@@ -171,6 +175,23 @@ class DailyNoteService:
             for record in records:
                 session.expunge(record)
             return records
+
+    def _daily_report_needs_regeneration(self, note_date: str, records: list[DailyNoteRecord]) -> bool:
+        """Return whether note-generated optimized daily output is missing or stale."""
+
+        self._ensure_database_context()
+        with self.session_factory() as session:
+            report = DailyReportRepository(session).find_by_date_project(
+                user_id=self.user_context.user_id,
+                report_date=parse_date(note_date),
+                project_name="Daily Notes",
+            )
+            if report is None:
+                return True
+            if not Path(report.optimized_file_path).exists():
+                return True
+            latest_note_update = max(record.updated_at for record in records)
+            return latest_note_update > report.updated_at
 
     def _serialize_collection(self, records: list[DailyNoteRecord]) -> dict:
         notes = [self.serialize_note(record) for record in records]
