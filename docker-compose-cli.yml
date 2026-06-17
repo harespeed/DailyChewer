@@ -1,0 +1,79 @@
+# Shared project name lets GUI and CLI compose files reuse the same backend/postgres containers.
+name: dailychewer
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: dailychewer_postgres
+    environment:
+      POSTGRES_DB: dailychewer
+      POSTGRES_USER: dailychewer
+      POSTGRES_PASSWORD: dailychewer_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dailychewer -d dailychewer"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      args:
+        USE_CHINA_MIRROR: ${USE_CHINA_MIRROR:-true}
+        APT_MIRROR: ${APT_MIRROR:-https://mirrors.tuna.tsinghua.edu.cn/debian}
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple}
+        PIP_TRUSTED_HOST: ${PIP_TRUSTED_HOST:-mirrors.tuna.tsinghua.edu.cn}
+    image: dailychewer:latest
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      postgres:
+        condition: service_healthy
+    working_dir: /app
+    entrypoint: []
+    command: ["uvicorn", "backend.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app/backend
+      - ./config:/app/config
+      - ./alembic.ini:/app/alembic.ini
+      - ./data:/app/data
+      - ./input:/app/input
+    stdin_open: true
+    tty: true
+
+  cli:
+    build:
+      context: .
+      args:
+        USE_CHINA_MIRROR: ${USE_CHINA_MIRROR:-true}
+        APT_MIRROR: ${APT_MIRROR:-https://mirrors.tuna.tsinghua.edu.cn/debian}
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple}
+        PIP_TRUSTED_HOST: ${PIP_TRUSTED_HOST:-mirrors.tuna.tsinghua.edu.cn}
+    image: dailychewer:latest
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      - backend
+    working_dir: /app
+    entrypoint: ["python", "-m", "dailychewer.cli", "tui"]
+    volumes:
+      - ./backend:/app/backend
+      - ./cli:/app/cli
+      - ./dailychewer:/app/dailychewer
+      - ./config:/app/config
+      - ./alembic.ini:/app/alembic.ini
+      - ./data:/app/data
+      - ./input:/app/input
+    stdin_open: true
+    tty: true
+
+volumes:
+  postgres_data:

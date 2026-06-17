@@ -118,6 +118,68 @@ DAILYCHEWER_DEFAULT_DISPLAY_NAME=Admin
 - 没有任何 API Key 时，会提示：
   `No LLM API key configured. Please set MINIMAX_API_KEY or OPENAI_API_KEY in .env.`
 - 如果 `DATABASE_URL` 未配置，CLI 仍可继续使用 local mode 和 `data/index.json`。
+
+## Docker Compose Entrypoints
+
+项目提供两个分开的 Compose 文件：
+
+- `docker-compose-gui.yml`：启动 PostgreSQL、backend、React GUI。
+- `docker-compose-cli.yml`：启动 PostgreSQL、backend，并进入交互式 CLI/TUI。
+
+两个文件都使用同一个 Compose project name：`dailychewer`。因此如果 GUI 已经启动了 `dailychewer-backend-1`，再启动 CLI 时会复用同一个 backend；反过来也一样，不会再启动第二套 backend。
+
+一键构建并启动 GUI：
+
+```bash
+scripts/start_dailychewer.sh
+```
+
+一键构建并进入 CLI/TUI：
+
+```bash
+scripts/start_dailychewer.sh --cli
+```
+
+只构建镜像：
+
+```bash
+scripts/start_dailychewer.sh --build-only
+```
+
+跳过构建，只启动 GUI：
+
+```bash
+scripts/start_dailychewer.sh --no-build --gui
+```
+
+启动 GUI：
+
+```bash
+COMPOSE_IGNORE_ORPHANS=true docker compose -f docker-compose-gui.yml up -d backend frontend
+```
+
+打开：
+
+```text
+http://localhost:5173
+```
+
+进入 CLI/TUI：
+
+```bash
+COMPOSE_IGNORE_ORPHANS=true docker compose -f docker-compose-cli.yml run --rm cli
+```
+
+说明：
+- 如果 backend/postgres 尚未启动，CLI compose 会先启动它们。
+- 如果 backend/postgres 已由 GUI compose 启动，CLI compose 会检测并复用现有容器。
+- `COMPOSE_IGNORE_ORPHANS=true` 只用于隐藏另一个 compose 文件中服务的 orphan 提示，不会删除容器。
+
+完整 CLI/TUI 功能说明见：
+
+```text
+docs/CLI_FULL_GUIDE.md
+```
 - Web backend 启动需要 `DATABASE_URL`，否则会给出清晰错误。
 - 生产环境必须修改 `JWT_SECRET_KEY` 和默认 admin 密码。
 

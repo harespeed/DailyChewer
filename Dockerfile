@@ -21,6 +21,9 @@ RUN if [ "${USE_CHINA_MIRROR}" = "true" ]; then \
         fi; \
         pip config set global.index-url "${PIP_INDEX_URL}"; \
         pip config set global.trusted-host "${PIP_TRUSTED_HOST}"; \
+    else \
+        pip config unset global.index-url || true; \
+        pip config unset global.trusted-host || true; \
     fi
 
 # Install minimal system packages required by pandas/openpyxl/python-docx workflows.

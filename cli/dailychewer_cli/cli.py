@@ -20,17 +20,21 @@ from dailychewer_backend.services.doctor_service import DoctorService
 from dailychewer_backend.services.ingest_service import IngestService
 from dailychewer_backend.services.migration_service import LegacyIndexMigrationService
 from dailychewer_backend.services.monthly_service import MonthlyService
+from dailychewer_backend.services.note_service import DailyNoteService
 from dailychewer_backend.services.search_service import SearchService
 from dailychewer_backend.services.template_service import TemplateService
 from dailychewer_backend.services.user_service import UserService
 from dailychewer_backend.services.weekly_service import WeeklyService
 from dailychewer_backend.utils.logger import get_logger
+from dailychewer_cli.note_calendar import current_month, render_note_calendar
+from dailychewer_cli.tui import run_tui
 
 
 app = typer.Typer(help="DailyChewer: 日报优化 + 周报生成器", add_completion=False)
 user_app = typer.Typer(help="数据库用户管理命令。")
 db_app = typer.Typer(help="数据库初始化与检查命令。")
 backup_app = typer.Typer(help="备份与恢复命令。")
+notes_app = typer.Typer(help="日报便条日历与只读查看命令。")
 console = Console(width=160)
 
 
@@ -163,6 +167,13 @@ def version() -> None:
     """Print the current DailyChewer version."""
 
     console.print(f"DailyChewer {__version__}")
+
+
+@app.command("tui")
+def tui() -> None:
+    """Start the interactive DailyChewer terminal UI."""
+
+    run_tui()
 
 
 @app.command("template")
@@ -584,6 +595,27 @@ def doctor(
         raise typer.Exit(code=1)
 
 
+@notes_app.command("calendar")
+def notes_calendar(
+    month: str = typer.Option(current_month(), "--month", help="目标月份 YYYY-MM。默认当前月份。"),
+    user: str = typer.Option(..., "--user", help="数据库用户名；CLI 便条日历需要明确用户作用域。"),
+) -> None:
+    """Show a GUI-aligned month calendar for daily notes without changing data."""
+
+    logger = None
+    try:
+        settings = load_settings()
+        logger = get_logger(settings)
+        user_context = resolve_user_context(user, settings=settings)
+        payload = DailyNoteService(user_context=user_context).list_month(month)
+        console.print(render_note_calendar(month, payload, username=user_context.username or user))
+    except Exception as exc:
+        if logger is not None:
+            logger.error("notes_calendar_failed error=%s", exc)
+        _print_error(str(exc))
+        raise typer.Exit(code=1)
+
+
 @user_app.command("create")
 def user_create(
     username: str = typer.Argument(..., help="用户名"),
@@ -924,6 +956,7 @@ def backup_verify(
 app.add_typer(user_app, name="user")
 app.add_typer(db_app, name="db")
 app.add_typer(backup_app, name="backup")
+app.add_typer(notes_app, name="notes")
 
 
 if __name__ == "__main__":

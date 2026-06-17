@@ -16,11 +16,13 @@ from dailychewer_backend.config import load_settings
 from dailychewer_backend.db.models import Base
 from dailychewer_backend.db.repositories import DailyReportRepository, UserRepository
 from dailychewer_backend.db.session import get_engine, get_session_maker
-from dailychewer_backend.models import DailyReport, ReportIndexItem, ReportSection
+from dailychewer_backend.models import DailyReport, ReportIndexItem, ReportSection, UserContext
+from dailychewer_backend.services.note_service import DailyNoteService
 from dailychewer_backend.services.migration_service import LegacyIndexMigrationService
 from dailychewer_backend.storage.file_store import FileStore
 from dailychewer_backend.storage.index_store import IndexStore
 from dailychewer_cli.cli import app as cli_app
+from dailychewer_cli.tui import authenticate_user
 
 
 def _register_and_login(client: TestClient, username: str, password: str = "password123", *, admin: bool = False, settings=None):
@@ -95,6 +97,60 @@ def test_cli_user_disable_enable_and_reset_password(db_env) -> None:
         user = UserRepository(session).get_by_username("testuser")
     assert user is not None
     assert verify_password("newpass123", user.password_hash) is True
+
+
+def test_cli_notes_calendar_renders_daily_note_depth(db_env) -> None:
+    _, settings = db_env
+    runner = CliRunner()
+    runner.invoke(cli_app, ["user", "create", "writer", "--password", "password123"])
+    with get_session_maker(settings)() as session:
+        user = UserRepository(session).get_by_username("writer")
+        assert user is not None
+        user_id = user.id
+
+    service = DailyNoteService(
+        user_context=UserContext(
+            user_id=user_id,
+            username="writer",
+            storage_mode="database",
+        )
+    )
+    service.create_note("短日志", note_date="2026-06-03", period="morning")
+    service.create_note("详细日志" * 80, note_date="2026-06-04", period="afternoon")
+
+    result = runner.invoke(cli_app, ["notes", "calendar", "--month", "2026-06", "--user", "writer"])
+
+    assert result.exit_code == 0
+    assert "DailyChewer CLI" in result.output
+    assert "Daily Notes Calendar 2026-06" in result.output
+    assert "Sun" in result.output
+    assert "Mon" in result.output
+    assert "Tue" in result.output
+    assert "2026-06-03" in result.output
+    assert "2026-06-04" in result.output
+    assert "1 条日志" in result.output
+    assert "●●●●" in result.output
+    assert "Next commands" in result.output
+    assert "dailychewer notes calendar --month 2026-06 --user writer" in result.output
+
+
+def test_tui_authenticate_user_uses_database_credentials(db_env) -> None:
+    runner = CliRunner()
+    runner.invoke(cli_app, ["user", "create", "writer", "--password", "password123"])
+
+    user = authenticate_user("writer", "password123")
+
+    assert user.username == "writer"
+    assert user.context.storage_mode == "database"
+
+
+def test_cli_tui_help_is_registered() -> None:
+    runner = CliRunner()
+
+    result = runner.invoke(cli_app, ["tui", "--help"])
+
+    assert result.exit_code == 0
+    assert "interactive DailyChewer terminal UI" in result.output
 
 
 def test_change_password_rejects_wrong_old_password(client: TestClient, db_env) -> None:

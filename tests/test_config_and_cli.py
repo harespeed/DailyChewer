@@ -142,6 +142,50 @@ def test_docker_compose_contains_mirror_build_args() -> None:
     assert "PIP_TRUSTED_HOST: ${PIP_TRUSTED_HOST:-mirrors.tuna.tsinghua.edu.cn}" in compose
 
 
+def test_split_compose_files_share_backend_project() -> None:
+    gui_compose = Path("docker-compose-gui.yml").read_text(encoding="utf-8")
+    cli_compose = Path("docker-compose-cli.yml").read_text(encoding="utf-8")
+
+    for compose in (gui_compose, cli_compose):
+        assert "name: dailychewer" in compose
+        assert "backend:" in compose
+        assert "postgres:" in compose
+        assert "USE_CHINA_MIRROR: ${USE_CHINA_MIRROR:-true}" in compose
+        assert "PIP_INDEX_URL: ${PIP_INDEX_URL:-https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple}" in compose
+    assert "frontend:" in gui_compose
+    assert "cli:" in cli_compose
+    assert 'entrypoint: ["python", "-m", "dailychewer.cli", "tui"]' in cli_compose
+
+
+def test_start_script_uses_split_compose_and_domestic_mirrors() -> None:
+    script = Path("scripts/start_dailychewer.sh")
+    content = script.read_text(encoding="utf-8")
+
+    assert script.exists()
+    assert "docker-compose-gui.yml" in content
+    assert "docker-compose-cli.yml" in content
+    assert "mirrors.aliyun.com/debian" in content
+    assert "mirrors.aliyun.com/pypi/simple" in content
+    assert "registry.npmmirror.com" in content
+
+
+def test_cli_full_guide_documents_calendar_and_entrypoints() -> None:
+    guide = Path("docs/CLI_FULL_GUIDE.md").read_text(encoding="utf-8")
+
+    assert "DailyChewer CLI / TUI Full Guide" in guide
+    assert "dailychewer notes calendar --month 2026-06 --user alice" in guide
+    assert "python -m dailychewer.cli tui" in guide
+    assert "scripts/start_dailychewer.sh --cli" in guide
+    assert "docker-compose-cli.yml" in guide
+    assert "The calendar command prints a full month table" in guide
+
+
+def test_pyproject_exposes_interactive_cli_entrypoint() -> None:
+    pyproject = Path("pyproject.toml").read_text(encoding="utf-8")
+
+    assert '"dailychewer.cli" = "dailychewer_cli.tui:main"' in pyproject
+
+
 def test_load_settings_reads_dailychewer_toml(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("DAILYCHEWER_ENABLE_REDACTION", "false")

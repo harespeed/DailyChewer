@@ -39,6 +39,7 @@ dev = [
 
 [project.scripts]
 dailychewer = "dailychewer_cli.cli:app"
+"dailychewer.cli" = "dailychewer_cli.tui:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "backend/tests", "cli/tests"]
